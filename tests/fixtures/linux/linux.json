@@ -1,5 +1,5 @@
 {
-  "version": "0.17.1",
+  "version": "0.20.0",
   "actions": [
     {
       "action": {
@@ -354,6 +354,7 @@
                 "path": "/etc/nix/nix.conf",
                 "pending_nix_config": {
                   "settings": {
+                    "always-allow-substitutes": "true",
                     "experimental-features": "nix-command flakes auto-allocate-uids",
                     "build-users-group": "nixbld",
                     "auto-optimise-store": "true",
@@ -425,7 +426,7 @@
     }
   },
   "diagnostic_data": {
-    "version": "0.17.1",
+    "version": "0.19.0",
     "planner": "linux",
     "configured_settings": [],
     "os_name": "Ubuntu",

@@ -97,7 +97,7 @@ $ NIX_BUILD_GROUP_NAME=nixbuilder ./nix-installer install linux-multi --nix-buil
 
 ### Upgrading Nix
 
-You can upgrade Nix to the version described in [`DeterminateSystems/nix-upgrade`][nix-upgrade] by running:
+You can upgrade Nix to [our currently recommended version of Nix][recommended-nix] by running:
 
 ```
 sudo -i nix upgrade-nix
@@ -389,6 +389,9 @@ You'll also need to edit your `.cargo/config.toml` to use `tokio_unstable` as we
 rustflags=["--cfg", "tokio_unstable"]
 ```
 
+You'll also need to set the `NIX_INSTALLER_TARBALL_PATH` environment variable to point to a target-appropriate Nix installation tarball, like nix-2.21.2-aarch64-darwin.tar.xz.
+The contents are embedded in the resulting binary instead of downloaded at installation time.
+
 Then it's possible to review the [documentation](https://docs.rs/nix-installer/latest/nix_installer/):
 
 ```bash
@@ -438,9 +441,10 @@ Differing from the upstream [Nix](https://github.com/NixOS/nix) installer script
   + the `nix-command` and `flakes` features are enabled
   + `bash-prompt-prefix` is set
   + `auto-optimise-store` is set to `true` (On Linux only)
+  * `always-allow-substitutes` is set to `true`
   * `extra-nix-path` is set to `nixpkgs=flake:nixpkgs`
   * `max-jobs` is set to `auto`
-  * `upgrade-nix-store-path-url` is set to `https://install.determinate.systems/nix-upgrade/stable/universal`
+  * `upgrade-nix-store-path-url` is set to `https://install.determinate.systems/nix-upgrade/stable/universal`, to prevent unintentional downgrades.
 * an installation receipt (for uninstalling) is stored at `/nix/receipt.json` as well as a copy of the install binary at `/nix/nix-installer`
 * `nix-channel --update` is not run, `~/.nix-channels` is not provisioned
 * `ssl-cert-file` is set in `/etc/nix/nix.conf` if the `ssl-cert-file` argument is used.
@@ -466,6 +470,83 @@ The Determinate Nix installer has numerous advantages:
 
 It has been wonderful to collaborate with other participants in the Nix Installer Working Group and members of the broader community. The working group maintains a [foundation owned fork of the installer](https://github.com/nixos/experimental-nix-installer/).
 
+## Installer settings
+
+The Determinate Nix Installer provides a variety of configuration settings, some [general](#general-settings) and some on a per-command basis.
+All settings are available via flags or via `NIX_INSTALLER_*` environment variables.
+
+### General settings
+
+These settings are available for all commands.
+
+| Flag(s)                  | Description                                        | Default (if any) | Environment variable                 |
+|--------------------------|----------------------------------------------------|------------------|--------------------------------------|
+| `--log-directives` | Tracing directives delimited by comma | | `NIX_INSTALLER_LOG_DIRECTIVES` |
+| `--logger` | Which logger to use (options are `compact`, `full`, `pretty`, and `json`) | `compact` | `NIX_INSTALLER_LOGGER` |
+| `--verbose` | Enable debug logs, (`-vv` for trace) | `false` | `NIX_INSTALLER_VERBOSITY` |
+
+### Installation (`nix-installer install`)
+
+| Flag(s)                  | Description                                        | Default (if any) | Environment variable                 |
+|--------------------------|----------------------------------------------------|------------------|--------------------------------------|
+| `--diagnostic-attribution` | Relate the install diagnostic to a specific value | | `NIX_INSTALLER_DIAGNOSTIC_ATTRIBUTION` |
+| `--diagnostic-endpoint` | The URL or file path for an installation diagnostic to be sent | `https://install.determinate.systems/nix/diagnostic` | `NIX_INSTALLER_DIAGNOSTIC_ENDPOINT` |
+| `--explain` | Provide an explanation of the changes the installation process will make to your system | `false` | `NIX_INSTALLER_EXPLAIN` |
+| `--extra-conf` | Extra configuration lines for `/etc/nix.conf` | | `NIX_INSTALLER_EXTRA_CONF` |
+| `--force` | If `nix-installer` should forcibly recreate files it finds existing | `false` | `NIX_INSTALLER_FORCE` |
+| `--init` | Which init system to configure (if `--init none` Nix will be root-only) | `launchd` (macOS), `systemd` (Linux) | `NIX_INSTALLER_INIT` |
+| `--nix-build-group-id` | The Nix build group GID | `30000` | `NIX_INSTALLER_NIX_BUILD_GROUP_ID` |
+| `--nix-build-group-name` | The Nix build group name | `nixbld` | `NIX_INSTALLER_NIX_BUILD_GROUP_NAME` |
+| `--nix-build-user-count` | The number of build users to create | `32` | `NIX_INSTALLER_NIX_BUILD_USER_COUNT` |
+| `--nix-build-user-id-base` | The Nix build user base UID (ascending) | `300` (macOS), `30000` (Linux) | `NIX_INSTALLER_NIX_BUILD_USER_ID_BASE` |
+| `--nix-build-user-prefix` | The Nix build user prefix (user numbers will be postfixed) | `_nixbld` (macOS), `nixbld` (Linux) | `NIX_INSTALLER_NIX_BUILD_USER_PREFIX` |
+| `--nix-package-url` | The Nix package URL | | `NIX_INSTALLER_NIX_PACKAGE_URL` |
+| `--no-confirm` | Run installation without requiring explicit user confirmation | `false` | `NIX_INSTALLER_NO_CONFIRM` |
+| `--no-modify-profile` | Modify the user profile to automatically load Nix. | `true` | `NIX_INSTALLER_MODIFY_PROFILE` |
+| `--proxy` | The proxy to use (if any); valid proxy bases are `https://$URL`, `http://$URL` and `socks5://$URL` | | `NIX_INSTALLER_PROXY` |
+| `--ssl-cert-file` | An SSL cert to use (if any); used for fetching Nix and sets `ssl-cert-file` in `/etc/nix/nix.conf` | | `NIX_INSTALLER_SSL_CERT_FILE` |
+| `--no-start-daemon` | Start the daemon (if not `--init none`) | `true` | `NIX_INSTALLER_START_DAEMON` |
+
+You can also specify a planner with the first argument:
+
+```shell
+nix-installer install <plan>
+```
+
+Alternatively, you can use the `NIX_INSTALLER_PLAN` environment variable:
+
+```shell
+NIX_INSTALLER_PLAN=<plan> nix-installer install
+```
+
+### Uninstalling (`nix-installer uninstall`)
+
+| Flag(s)                  | Description                                        | Default (if any) | Environment variable                 |
+|--------------------------|----------------------------------------------------|------------------|--------------------------------------|
+| `--explain` | Provide an explanation of the changes the installation process will make to your system | `false` | `NIX_INSTALLER_EXPLAIN` |
+| `--no-confirm` | Run installation without requiring explicit user confirmation | `false` | `NIX_INSTALLER_NO_CONFIRM` |
+
+You can also specify an installation receipt as the first argument (the default is `/nix/receipt.json`):
+
+```shell
+nix-installer uninstall /path/to/receipt.json
+```
+
+### Planning (`nix-installer plan`)
+
+| Flag(s)                  | Description                                        | Default (if any) | Environment variable                 |
+|--------------------------|----------------------------------------------------|------------------|--------------------------------------|
+| `--out-file` | Where to write the generated plan (in JSON format) | `/dev/stdout` | `NIX_INSTALLER_PLAN_OUT_FILE` |
+
+### Repairing (`nix-installer repair`)
+
+| Flag(s)                  | Description                                        | Default (if any) | Environment variable                 |
+|--------------------------|----------------------------------------------------|------------------|--------------------------------------|
+| `--no-confirm` | Run installation without requiring explicit user confirmation | `false` | `NIX_INSTALLER_NO_CONFIRM` |
+
+### Self-test (`nix-installer self-test`)
+
+`nix-installer self-test` only takes [general settings](#general-settings).
 
 ## Diagnostics
 
@@ -495,8 +576,8 @@ You can read the full privacy policy for [Determinate Systems][detsys], the crea
 [detsys]: https://determinate.systems/
 [diagnosticdata]: https://github.com/DeterminateSystems/nix-installer/blob/f9f927840d532b71f41670382a30cfcbea2d8a35/src/diagnostics.rs#L29-L43
 [privacy]: https://determinate.systems/policies/privacy
+[recommended-nix]: https://github.com/DeterminateSystems/nix/releases/latest
 [systemd]: https://systemd.io
 [wslg]: https://github.com/microsoft/wslg
 [nixgl]: https://github.com/guibou/nixGL
 [Nix]: https://nixos.org
-[nix-upgrade]: https://github.com/DeterminateSystems/nix-upgrade/blob/main/versions.nix

@@ -1,6 +1,6 @@
 name: Build x86_64 Darwin
 
-on: 
+on:
   workflow_call:
     inputs:
       cache-key:
@@ -11,13 +11,20 @@ on:
 jobs:
   build-x86_64-darwin:
     name: Build x86_64 Darwin
-    runs-on: macos-latest-large
+    runs-on: macos-13-large
     concurrency: ${{ inputs.cache-key }}
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
       - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-gha-cache: false
       - name: Build the installer
         run: |
           nix build .#packages.x86_64-darwin.nix-installer -L

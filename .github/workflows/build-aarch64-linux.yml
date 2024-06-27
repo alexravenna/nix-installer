@@ -1,6 +1,6 @@
 name: Build aarch64 Linux (static)
 
-on: 
+on:
   workflow_call:
     inputs:
       cache-key:
@@ -13,11 +13,18 @@ jobs:
     name: Build aarch64 Linux (static)
     runs-on: namespace-profile-default-arm64
     concurrency: ${{ inputs.cache-key }}
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
+        with:
+          flakehub: true
       - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-gha-cache: false
       - name: Build the installer
         run: |
           nix build .#packages.aarch64-linux.nix-installer-static -L

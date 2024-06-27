@@ -15,7 +15,7 @@
     };
 
     nix = {
-      url = "https://flakehub.com/f/NixOS/nix/=2.21.2.tar.gz";
+      url = "https://flakehub.com/f/DeterminateSystems/nix/=2.23.1.tar.gz";
       # Omitting `inputs.nixpkgs.follows = "nixpkgs";` on purpose
     };
 
@@ -55,6 +55,10 @@
         ] ++ nixpkgs.lib.optionals (system == "aarch64-linux") [
           targets.aarch64-unknown-linux-musl.stable.rust-std
         ]);
+
+      nixTarballs = forAllSystems ({ system, ... }:
+        inputs.nix.tarballs_direct.${system}
+          or "${inputs.nix.checks."${system}".binaryTarball}/nix-${inputs.nix.packages."${system}".default.version}-${system}.tar.xz");
     in
     {
       overlays.default = final: prev:
@@ -66,7 +70,7 @@
           };
           sharedAttrs = {
             pname = "nix-installer";
-            version = "0.17.1";
+            version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
             src = builtins.path {
               name = "nix-installer-source";
               path = self;
@@ -86,6 +90,8 @@
             doDocFail = true;
             RUSTFLAGS = "--cfg tokio_unstable";
             cargoTestOptions = f: f ++ [ "--all" ];
+
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${final.stdenv.system};
 
             override = { preBuild ? "", ... }: {
               preBuild = preBuild + ''
@@ -130,10 +136,12 @@
             name = "nix-install-shell";
 
             RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
+            NIX_INSTALLER_TARBALL_PATH = nixTarballs.${system};
 
             nativeBuildInputs = with pkgs; [ ];
             buildInputs = with pkgs; [
               toolchain
+              shellcheck
               rust-analyzer
               cargo-outdated
               cacert
@@ -207,12 +215,14 @@
       hydraJobs = {
         vm-test = import ./nix/tests/vm-test {
           inherit forSystem;
-          inherit (nix.hydraJobs) binaryTarball;
           inherit (nixpkgs) lib;
+
+          binaryTarball = nix.tarballs_indirect;
         };
         container-test = import ./nix/tests/container-test {
           inherit forSystem;
-          inherit (nix.hydraJobs) binaryTarball;
+
+          binaryTarball = nix.tarballs_indirect;
         };
       };
     };
